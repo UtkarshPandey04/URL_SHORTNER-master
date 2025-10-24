@@ -14,7 +14,7 @@ export const saveShortUrl = async (shortUrl, longUrl, userId, qrCode) => {
         await newUrl.save()
     }catch(err){
         if(err.code == 11000){
-            throw new ConflictError("Short URL already exists")
+            throw new ConflictError("Conflict occurred")
         }
         throw new Error(err)
     }
