@@ -4,7 +4,7 @@ import { getCustomShortUrl, saveShortUrl } from "../dao/short_url.js"
 import QRCode from "qrcode"
 
 export const createShortUrlWithoutUser = async (url) => {
-    let shortUrl = generateNanoId(7)
+    let shortUrl = generateNanoId()
     if(!shortUrl) throw new Error("Short URL not generated")
     let attempts = 0;
     while (attempts < 10) {
@@ -13,15 +13,15 @@ export const createShortUrlWithoutUser = async (url) => {
             await saveShortUrl(shortUrl,url, null, qrCode)
             return shortUrl
         } catch (err) {
-            if (err.message === "Short URL already exists") {
-                shortUrl = generateNanoId(7);
+            if (err.message === "Conflict occurred" || err.message === "Short URL already exists") {
+                shortUrl = generateNanoId();
                 attempts++;
             } else {
                 throw err;
             }
         }
     }
-    throw new Error("Failed to generate unique short URL")
+    throw new Error("Failed to generate unique short URL after 10 attempts")
 }
 
 export const createShortUrlWithUser = async (url,userId,slug=null) => {
@@ -36,8 +36,11 @@ export const createShortUrlWithUser = async (url,userId,slug=null) => {
         const exists = await getCustomShortUrl(slug);
         if (exists) throw new Error("This custom url already exists");
         shortUrl = slug;
+        const qrCode = await QRCode.toDataURL(`${process.env.APP_URL}${shortUrl}`)
+        await saveShortUrl(shortUrl,url,userId, qrCode)
+        return shortUrl
     } else {
-        shortUrl = generateNanoId(7);
+        shortUrl = generateNanoId();
         let attempts = 0;
         while (attempts < 10) {
             try {
@@ -45,18 +48,14 @@ export const createShortUrlWithUser = async (url,userId,slug=null) => {
                 await saveShortUrl(shortUrl,url,userId, qrCode)
                 return shortUrl
             } catch (err) {
-                if (err.message === "Short URL already exists") {
-                    shortUrl = generateNanoId(7);
+                if (err.message === "Conflict occurred" || err.message === "Short URL already exists") {
+                    shortUrl = generateNanoId();
                     attempts++;
                 } else {
                     throw err;
                 }
             }
         }
-        throw new Error("Failed to generate unique short URL")
+        throw new Error("Failed to generate unique short URL after 10 attempts")
     }
-
-    const qrCode = await QRCode.toDataURL(`${process.env.APP_URL}${shortUrl}`)
-    await saveShortUrl(shortUrl,url,userId, qrCode)
-    return shortUrl
 }
